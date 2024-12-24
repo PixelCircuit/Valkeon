@@ -45,6 +45,63 @@ set(GLFW_USE_HARFBUZZ OFF CACHE BOOL "" FORCE) # Disable HarfBuzz
 add_subdirectory(thirdparty/glfw)
 
 
+
+
+# Define Shaders Source Directory
+set(SHADERS_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Shaders")
+
+# Define Shaders Build Directory (temporary directory for compiled shaders)
+set(SHADERS_BUILD_DIR "${CMAKE_BINARY_DIR}/shaders_build")
+
+# Define Shaders Destination Directory (where the executable will look for shaders)
+set(SHADERS_DEST_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Shaders")
+
+# Create the Shaders Build Directory
+file(MAKE_DIRECTORY "${SHADERS_BUILD_DIR}")
+
+# Collect all shader source files (*.vert, *.frag, *.comp)
+file(GLOB SHADER_SOURCE_FILES
+    "${SHADERS_SOURCE_DIR}/*.vert"
+    "${SHADERS_SOURCE_DIR}/*.frag"
+    "${SHADERS_SOURCE_DIR}/*.comp"
+)
+
+# Function to compile a shader
+function(compile_shader shader_src shader_out)
+    add_custom_command(
+        OUTPUT "${shader_out}"
+        COMMAND ${GLSLC_EXECUTABLE} -c "${shader_src}" -o "${shader_out}"
+        DEPENDS "${shader_src}"
+        COMMENT "Compiling ${shader_src} to ${shader_out}"
+    )
+endfunction()
+
+# Iterate over each shader source file and define its compilation
+foreach(SHADER_SRC ${SHADER_SOURCE_FILES})
+    get_filename_component(SHADER_NAME "${SHADER_SRC}" NAME)
+    set(SHADER_OUT "${SHADERS_BUILD_DIR}/${SHADER_NAME}.spv")
+    compile_shader("${SHADER_SRC}" "${SHADER_OUT}")
+    list(APPEND COMPILED_SHADERS "${SHADER_OUT}")
+endforeach()
+
+# Create a custom target to build all shaders
+add_custom_target(CompileShaders ALL DEPENDS ${COMPILED_SHADERS})
+
+
+# Ensure Shaders Destination Directory exists before copying
+add_custom_command(TARGET CompileShaders POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADERS_DEST_DIR}"
+    COMMENT "Creating Shaders destination directory: ${SHADERS_DEST_DIR}"
+)
+
+# Add custom commands to copy each compiled shader to the destination directory
+foreach(COMPILED_SHADER ${COMPILED_SHADERS})
+    add_custom_command(TARGET CompileShaders POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${COMPILED_SHADER}" "${SHADERS_DEST_DIR}/"
+        COMMENT "Copying ${COMPILED_SHADER} to ${SHADERS_DEST_DIR}/"
+    )
+endforeach()
+
 add_library(Core STATIC
         Core/VulkanContext.cpp
         Core/Swapchain.cpp
@@ -53,6 +110,7 @@ add_library(Core STATIC
         Core/Framebuffer.cpp
         Core/CommandPool.cpp
         Core/Synchronization.cpp
+        Core/Types.hpp
 )
 
 # Include directories
@@ -76,6 +134,9 @@ add_executable(Valkeon main.cpp
 
 target_link_libraries(Valkeon PRIVATE Core)
 
+# Make the executable depend on shader compilation
+add_dependencies(Valkeon CompileShaders)
+
 # (Optional) Define any compile definitions or options
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(Valkeon PRIVATE ENABLE_VALIDATION_LAYERS)
@@ -83,68 +144,3 @@ endif()
 
 # Ensure GLM is available as a target (header-only)
 target_link_libraries(Valkeon PRIVATE glm)
-
-# Function to compile all shaders in a directory
-function(compile_all_shaders SHADERS_DIR OUTPUT_DIR)
-    # Create the output directory
-    file(MAKE_DIRECTORY ${OUTPUT_DIR})
-
-    # Find all shader files with extensions .vert, .frag, .geom, .comp, etc.
-    file(GLOB_RECURSE SHADER_FILES "${CMAKE_SOURCE_DIR}/${SHADERS_DIR}/*.[vV][eE][rR][tT]?"
-            "${CMAKE_SOURCE_DIR}/${SHADERS_DIR}/*.[fF][rR][aA][gG]?"
-            "${CMAKE_SOURCE_DIR}/${SHADERS_DIR}/*.[gG][eE][oO][mM]?"
-            "${CMAKE_SOURCE_DIR}/${SHADERS_DIR}/*.[cC][oO][mM][pP]?")
-
-    # Initialize an empty list to hold compiled shader paths
-    set(COMPILED_SHADERS)
-
-    foreach(SHADER ${SHADER_FILES})
-        # Get the relative path of the shader file
-        file(RELATIVE_PATH REL_SHADER_PATH "${CMAKE_SOURCE_DIR}/${SHADERS_DIR}" "${SHADER}")
-
-        # Replace backslashes with forward slashes for cross-platform compatibility
-        string(REPLACE "\\" "/" REL_SHADER_PATH "${REL_SHADER_PATH}")
-
-        # Extract the filename without extension
-        get_filename_component(SHADER_NAME ${SHADER} NAME_WE)
-
-        # Define the output path for the compiled shader
-        set(SPIRV_OUTPUT "${OUTPUT_DIR}/${REL_SHADER_PATH}.spv")
-
-        # Create the output subdirectory if necessary
-        get_filename_component(SPIRV_DIR "${SPIRV_OUTPUT}" DIRECTORY)
-        file(MAKE_DIRECTORY "${SPIRV_DIR}")
-
-        # Add a custom command to compile the shader
-        add_custom_command(
-                OUTPUT ${SPIRV_OUTPUT}
-                COMMAND ${GLSLC_EXECUTABLE} ${SHADER} -o ${SPIRV_OUTPUT}
-                DEPENDS ${SHADER}
-                COMMENT "Compiling ${REL_SHADER_PATH} to SPIR-V"
-                VERBATIM
-        )
-
-        # Add the compiled shader to the list
-        list(APPEND COMPILED_SHADERS ${SPIRV_OUTPUT})
-    endforeach()
-
-    # Add a custom target that depends on all compiled shaders
-    add_custom_target(CompileShaders DEPENDS ${COMPILED_SHADERS})
-
-    # Ensure that shaders are compiled before building the executable
-    add_dependencies(Valkeon CompileShaders)
-
-    # Copy compiled shaders to the executable's Shaders directory
-    foreach(SPIRV ${COMPILED_SHADERS})
-        add_custom_command(TARGET Valkeon POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:Valkeon>/${SHADERS_DIR}
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${SPIRV}
-                $<TARGET_FILE_DIR:Valkeon>/${SHADERS_DIR}/$(notdir ${SPIRV})
-                COMMENT "Copying ${SPIRV} to executable directory"
-        )
-    endforeach()
-endfunction()
-
-# Call the function to compile all shaders in the Shaders directory
-compile_all_shaders("Shaders" "${CMAKE_CURRENT_BINARY_DIR}/Shaders")

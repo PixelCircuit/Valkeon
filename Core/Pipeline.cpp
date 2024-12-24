@@ -1,8 +1,17 @@
 #include "Pipeline.hpp"
-#include <fstream>
-#include <stdexcept>
 
+#include "Types.hpp"
+
+#include <array>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 static std::vector<char> readFile(const std::string &filename) {
+  std::cout << "Current Working Directory: " << std::filesystem::current_path()
+            << std::endl;
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
   if (!file.is_open())
     throw std::runtime_error("Failed to open shader file!");
@@ -53,10 +62,31 @@ void Pipeline::createBasicPipeline(VkDevice device, VkRenderPass renderPass,
   VkPipelineShaderStageCreateInfo shaderStages[] = {vertStageInfo,
                                                     fragStageInfo};
 
+  VkVertexInputBindingDescription bindingDescription{};
+  bindingDescription.binding = 0;             // Binding index
+  bindingDescription.stride = sizeof(Vertex); // Size of one vertex
+  bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // Per-vertex data
+
+  std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+
+  // Position attribute at Location 0
+  attributeDescriptions[0].binding = 0;
+  attributeDescriptions[0].location = 0;
+  attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
+  attributeDescriptions[0].offset = offsetof(Vertex, position);
+
+  // Color attribute at Location 1
+  attributeDescriptions[1].binding = 0;
+  attributeDescriptions[1].location = 1;
+  attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
+  attributeDescriptions[1].offset = offsetof(Vertex, color);
+
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
-  vertexInputInfo.vertexBindingDescriptionCount = 0;
-  vertexInputInfo.vertexAttributeDescriptionCount = 0;
+  vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+  vertexInputInfo.vertexBindingDescriptionCount = 1;
+  vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+  vertexInputInfo.vertexAttributeDescriptionCount = 2;
 
   VkPipelineInputAssemblyStateCreateInfo inputAssembly{
       VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};

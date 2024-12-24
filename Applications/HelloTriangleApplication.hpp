@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 
 // Core components
+#include "Buffer.hpp"
 #include "CommandPool.hpp"
 #include "Framebuffer.hpp"
 #include "Pipeline.hpp"
@@ -20,8 +21,8 @@ class HelloTriangleApplication {
 public:
   HelloTriangleApplication() = default;
   void run();
-  void initWindow();
 
+  void initWindow();
   void initVulkan();
   void mainLoop();
   void cleanup();
@@ -39,15 +40,15 @@ private:
   Synchronization synchronization;
 
   // Vertex Buffer
-  VkBuffer vertexBuffer;
+  Buffer vertexBuffer;
   VkDeviceMemory vertexBufferMemory;
 
   // Frame tracking
   size_t currentFrame = 0;
 
   void drawFrame();
-  uint32_t findMemoryType(uint32_t typeFilter,
-                          VkMemoryPropertyFlags properties);
   void createVertexBuffer();
-  void recordCommandBuffers(VkPipeline vk_pipeline, VkPipelineLayout pipeline_layout);
+  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+  void recordCommandBuffers(VkPipeline vk_pipeline,
+                            VkPipelineLayout pipeline_layout);
 };

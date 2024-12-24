@@ -111,6 +111,8 @@ add_library(Core STATIC
         Core/CommandPool.cpp
         Core/Synchronization.cpp
         Core/Types.hpp
+        Core/Buffer.cpp
+        Core/Buffer.hpp
 )
 
 # Include directories

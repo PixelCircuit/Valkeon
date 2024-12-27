@@ -1,16 +1,16 @@
-//
-// Created by Ali on 2024-12-17.
-//
+#pragma once
 
-#ifndef PIPELINE_HPP
-#define PIPELINE_HPP
-
-
+#include <vector>
+#include <vulkan/vulkan.h>
 
 class Pipeline {
 
+public:
+  void createBasicPipeline(VkDevice device, VkRenderPass renderPass,
+                           VkExtent2D extent, VkPipelineLayout &pipelineLayout,
+                           VkPipeline &pipeline);
+
+private:
+  VkShaderModule createShaderModule(VkDevice device,
+                                    const std::vector<char> &code);
 };
-
-
-
-#endif //PIPELINE_HPP

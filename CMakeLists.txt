@@ -44,8 +44,11 @@ set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 set(GLFW_USE_HARFBUZZ OFF CACHE BOOL "" FORCE) # Disable HarfBuzz
 add_subdirectory(thirdparty/glfw)
 
+# Add Assimp
+add_subdirectory(thirdparty/assimp EXCLUDE_FROM_ALL)
 
-
+# Add Vulkan Memory Allocator (VMA)
+add_subdirectory(thirdparty/VulkanMemoryAllocator)
 
 # Define Shaders Source Directory
 set(SHADERS_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Shaders")
@@ -121,6 +124,8 @@ target_include_directories(Core PUBLIC
     ${Vulkan_INCLUDE_DIRS}              # Vulkan headers
     thirdparty/glm                      # GLM headers
     thirdparty/glfw/include              # GLFW headers
+	thirdparty/assimp/include            # Assimp headers
+    thirdparty/VulkanMemoryAllocator/include                # VMA headers
 )
 
 # Link libraries
@@ -128,6 +133,8 @@ target_link_libraries(Core PUBLIC
     Vulkan::Vulkan                       # Vulkan library
     glfw                                # GLFW library
     glm                                 # GLM library (header-only)
+	assimp::assimp                      # Assimp library
+    VulkanMemoryAllocator               # VMA library
 )
 
 add_executable(Valkeon main.cpp

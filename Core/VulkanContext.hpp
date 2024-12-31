@@ -15,6 +15,8 @@ public:
   void pickPhysicalDevice(VkSurfaceKHR surface);
   void createLogicalDevice();
   void cleanup();
+  uint32_t findMemoryType(VulkanContext &context, uint32_t typeFilter,
+                        VkMemoryPropertyFlags properties);
 
   VkInstance getInstance() const { return instance; }
   VkDevice getDevice() const { return device; }

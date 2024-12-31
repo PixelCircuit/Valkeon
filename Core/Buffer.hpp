@@ -37,7 +37,5 @@ private:
   VkBuffer buffer = VK_NULL_HANDLE;
   VkDeviceMemory bufferMemory = VK_NULL_HANDLE;
 
-  // Helper functions
-  uint32_t findMemoryType(VulkanContext &context, uint32_t typeFilter,
-                          VkMemoryPropertyFlags properties);
+
 };

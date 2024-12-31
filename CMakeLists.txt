@@ -47,6 +47,11 @@ add_subdirectory(thirdparty/glfw)
 # Add Assimp
 add_subdirectory(thirdparty/assimp EXCLUDE_FROM_ALL)
 
+# Suppress unknown pragma warnings for Assimp when using g++
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(assimp PRIVATE -Wno-unknown-pragmas)
+endif()
+
 # Add Vulkan Memory Allocator (VMA)
 add_subdirectory(thirdparty/VulkanMemoryAllocator)
 
@@ -116,6 +121,8 @@ add_library(Core STATIC
         Core/Types.hpp
         Core/Buffer.cpp
         Core/Buffer.hpp
+        Core/Image.cpp
+        Core/Image.hpp
 )
 
 # Include directories
@@ -139,6 +146,8 @@ target_link_libraries(Core PUBLIC
 
 add_executable(Valkeon main.cpp
         Applications/HelloTriangleApplication.cpp
+        Applications/ModelLoadingApplication.cpp
+        Applications/ModelLoadingApplication.hpp
 )
 
 target_link_libraries(Valkeon PRIVATE Core)

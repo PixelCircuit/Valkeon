@@ -43,7 +43,7 @@ void Buffer::create(VulkanContext &context, VkDeviceSize size,
   allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   allocInfo.allocationSize = memRequirements.size;
   allocInfo.memoryTypeIndex =
-      findMemoryType(context, memRequirements.memoryTypeBits, properties);
+      context.findMemoryType(context, memRequirements.memoryTypeBits, properties);
 
   if (vkAllocateMemory(context.getDevice(), &allocInfo, nullptr,
                        &bufferMemory) != VK_SUCCESS) {
@@ -61,20 +61,4 @@ void Buffer::cleanup(VkDevice device) {
   if (bufferMemory != VK_NULL_HANDLE) {
     vkFreeMemory(device, bufferMemory, nullptr);
   }
-}
-
-uint32_t Buffer::findMemoryType(VulkanContext &context, uint32_t typeFilter,
-                                VkMemoryPropertyFlags properties) {
-  VkPhysicalDeviceMemoryProperties memProperties;
-  vkGetPhysicalDeviceMemoryProperties(context.getPhysicalDevice(),
-                                      &memProperties);
-
-  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
-                                    properties) == properties) {
-      return i;
-    }
-  }
-
-  throw std::runtime_error("Failed to find suitable memory type!");
 }

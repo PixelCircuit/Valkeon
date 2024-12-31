@@ -21,7 +21,6 @@ class HelloTriangleApplication {
 public:
   HelloTriangleApplication() = default;
   void run();
-
   void initWindow();
   void initVulkan();
   void mainLoop();
@@ -49,6 +48,4 @@ private:
   void drawFrame();
   void createVertexBuffer();
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-  void recordCommandBuffers(VkPipeline vk_pipeline,
-                            VkPipelineLayout pipeline_layout);
 };

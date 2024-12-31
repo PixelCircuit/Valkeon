@@ -1,11 +1,12 @@
 #include "Applications/HelloTriangleApplication.hpp"
+#include "Applications/ModelLoadingApplication.hpp"
 
 #include <cstdlib>
 #include <functional>
 
 
 int main() {
-  HelloTriangleApplication app;
+  ModelLoadingApplication app;
 
   try {
     app.run();

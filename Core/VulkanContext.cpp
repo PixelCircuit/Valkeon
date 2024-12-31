@@ -36,6 +36,22 @@ bool VulkanContext::checkValidationLayerSupport() {
 
   return true;
 }
+uint32_t VulkanContext::findMemoryType(VulkanContext &context,
+                                       uint32_t typeFilter,
+                                       VkMemoryPropertyFlags properties) {
+  VkPhysicalDeviceMemoryProperties memProperties;
+  vkGetPhysicalDeviceMemoryProperties(context.getPhysicalDevice(),
+                                      &memProperties);
+
+  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
+                                    properties) == properties) {
+      return i;
+                                    }
+  }
+
+  throw std::runtime_error("Failed to find suitable memory type!");
+}
 
 std::vector<const char *> VulkanContext::getRequiredExtensions() {
   uint32_t glfwExtensionCount = 0;

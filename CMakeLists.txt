@@ -121,8 +121,6 @@ add_library(Core STATIC
         Core/Types.hpp
         Core/Buffer.cpp
         Core/Buffer.hpp
-        Core/Image.cpp
-        Core/Image.hpp
 )
 
 # Include directories

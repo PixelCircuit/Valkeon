@@ -5,6 +5,7 @@ class RenderPass {
 
 public:
   void create(VkDevice device, VkFormat swapChainImageFormat);
+  void create(VkDevice device, VkFormat swapChainImageFormat ,VkFormat depthFormat );
   void cleanup(VkDevice device);
 
   VkRenderPass getRenderPass() const { return renderPass; }

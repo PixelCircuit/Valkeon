@@ -4,7 +4,6 @@
 
 #pragma once
 #include "Buffer.hpp"
-#include "Image.hpp"
 #include "glm/vec3.hpp"
 
 #include <CommandPool.hpp>
@@ -31,7 +30,6 @@ private:
   void loadModel();
   void createVertexBuffer();
   void createIndexBuffer();
-  //void createdepthTexture();
   void drawFrame();
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
   void recordCommandBuffers(VkPipeline vk_pipeline,
@@ -46,7 +44,6 @@ private:
   Buffer vertexBuffer;
   Buffer indexBuffer;
 
-  Image ImageClass;
   VkFormat depthFormat;
   VkImage depthImage;
   VkDeviceMemory depthImageMemory;
@@ -59,7 +56,12 @@ private:
   RenderPass renderPass;
   Framebuffer framebuffer;
   Pipeline pipeline;
-  CommandPool commandPool;
   std::vector<VkCommandBuffer> commandBuffers;
   Synchronization synchronization;
+
+  // Camera parameters with default values
+  glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 5.0f);
+  glm::vec3 cameraDir   = glm::vec3(0.0f, 0.0f, -1.0f);
+  glm::vec3 upVector     = glm::vec3(0.0f, 1.0f, 0.0f);
+  float fov             = 45.0f; // Degrees
 };

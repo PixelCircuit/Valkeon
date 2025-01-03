@@ -8,6 +8,9 @@ public:
   void create(VkDevice device, VkRenderPass renderPass,
               const std::vector<VkImageView> &swapChainImageViews,
               VkExtent2D extent);
+  void create(VkDevice device, VkRenderPass renderPass,
+                         const std::vector<VkImageView> &swapChainImageViews,
+                         VkImageView depthImageView, VkExtent2D extent);
   void cleanup(VkDevice device);
 
   const std::vector<VkFramebuffer> &getFramebuffers() const {

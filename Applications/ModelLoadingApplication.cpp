@@ -1,21 +1,18 @@
-//
-// Created by a00847261 on 2024-12-31.
-//
 
 #include "ModelLoadingApplication.hpp"
 
 #include "../thirdparty/assimp/contrib/Open3DGC/o3dgcVector.h"
 #include "GLFW/glfw3.h"
-#include "Image.hpp"
 #include "assimp/cimport.h"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-#include "glm/vec3.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/glm.hpp"
 
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
-#include <iostream>
-#include <filesystem>
 void ModelLoadingApplication::run() {
   initWindow();
   initVulkan();
@@ -85,32 +82,57 @@ void ModelLoadingApplication::initVulkan() {
                              e.what());
   }
 
+  try {
+
+    depthFormat = vulkanContext.findDepthFormat();
+
+
+
+    std::cout << "Depth Resources Created Successfully." << std::endl;
+  } catch (const std::runtime_error &e) {
+    throw std::runtime_error(std::string("Failed to create depth resources: ") +
+                             e.what());
+  }
+
   // Step 7: Create Render Pass
   try {
-    renderPass.create(vulkanContext.getDevice(), swapchain.getFormat());
+    renderPass.create(vulkanContext.getDevice(), swapchain.getFormat(),
+                      depthFormat);
     std::cout << "Render Pass Created Successfully." << std::endl;
   } catch (const std::runtime_error &e) {
     throw std::runtime_error(std::string("Failed to create render pass: ") +
                              e.what());
   }
 
+  vulkanContext.createDepthResources(vulkanContext, 800, 600, depthFormat,
+                                 depthImage, depthImageMemory);
+  vulkanContext.createImageView(vulkanContext, depthImage, depthFormat,
+                              VK_IMAGE_ASPECT_DEPTH_BIT, depthImageView);
+
   // Step 8: Create Framebuffers
   try {
     framebuffer.create(vulkanContext.getDevice(), renderPass.getRenderPass(),
-                       swapchain.getImageViews(), swapchain.getExtent());
+                       swapchain.getImageViews(), depthImageView,
+                       swapchain.getExtent());
     std::cout << "Framebuffers Created Successfully." << std::endl;
   } catch (const std::runtime_error &e) {
     throw std::runtime_error(std::string("Failed to create framebuffers: ") +
                              e.what());
   }
 
+  VkShaderModule vertexShaderModule =
+      pipeline.createShaderModule(vulkanContext.getDevice(), "Shaders/rubberduck.vert.spv");
+  VkShaderModule fragShaderModule =
+      pipeline.createShaderModule(vulkanContext.getDevice(), "Shaders/rubberduck.frag.spv");
+
   // Step 9: Create Graphics Pipeline
   VkPipelineLayout pipelineLayout;
   VkPipeline graphicsPipeline;
   try {
-    pipeline.createBasicPipeline(
-        vulkanContext.getDevice(), renderPass.getRenderPass(),
-        swapchain.getExtent(), pipelineLayout, graphicsPipeline);
+    pipeline.createPipeline(vulkanContext.getDevice(),
+                            renderPass.getRenderPass(), swapchain.getExtent(),
+                            pipelineLayout, graphicsPipeline,
+                            vertexShaderModule, fragShaderModule);
     std::cout << "Graphics Pipeline Created Successfully." << std::endl;
   } catch (const std::runtime_error &e) {
     throw std::runtime_error(
@@ -119,19 +141,23 @@ void ModelLoadingApplication::initVulkan() {
 
   // Step 10: Create Command Pool
   try {
-    commandPool.create(vulkanContext.getDevice(),
-                       vulkanContext.getGraphicsQueueFamilyIndex());
+    vulkanContext.commandPool.create(
+        vulkanContext.getDevice(), vulkanContext.getGraphicsQueueFamilyIndex());
     std::cout << "Command Pool Created Successfully." << std::endl;
   } catch (const std::runtime_error &e) {
     throw std::runtime_error(std::string("Failed to create command pool: ") +
                              e.what());
   }
 
+  vulkanContext.transitionImageLayout(vulkanContext.getDevice(),vulkanContext.commandPool.getCommandPool(),vulkanContext.getGraphicsQueue(),depthImage,depthFormat,
+                        VK_IMAGE_LAYOUT_UNDEFINED,
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
   // Step 11: Allocate Command Buffers
   try {
-    commandPool.allocateCommandBuffers(vulkanContext.getDevice(),
-                                       swapchain.getImageViews().size(),
-                                       commandBuffers);
+    vulkanContext.commandPool.allocateCommandBuffers(
+        vulkanContext.getDevice(), swapchain.getImageViews().size(),
+        commandBuffers);
     std::cout << "Command Buffers Allocated Successfully." << std::endl;
   } catch (const std::runtime_error &e) {
     throw std::runtime_error(
@@ -152,8 +178,7 @@ void ModelLoadingApplication::initVulkan() {
     loadModel();
     std::cout << "model loaded Successfully." << std::endl;
   } catch (const std::runtime_error &e) {
-    throw std::runtime_error(std::string("Failed to load model: ") +
-                             e.what());
+    throw std::runtime_error(std::string("Failed to load model: ") + e.what());
   }
 
   // Step 13: Create Vertex Buffer
@@ -192,9 +217,14 @@ void ModelLoadingApplication::initVulkan() {
       renderPassInfo.renderArea.offset = {0, 0};
       renderPassInfo.renderArea.extent = swapchain.getExtent();
 
-      VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-      renderPassInfo.clearValueCount = 1;
-      renderPassInfo.pClearValues = &clearColor;
+      std::array<VkClearValue, 2> clearValues{};
+
+      clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+      clearValues[1].depthStencil = {1.0f, 0}; // Clear depth
+
+      renderPassInfo.clearValueCount =
+          static_cast<uint32_t>(clearValues.size());
+      renderPassInfo.pClearValues = clearValues.data();
 
       vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo,
                            VK_SUBPASS_CONTENTS_INLINE);
@@ -202,15 +232,28 @@ void ModelLoadingApplication::initVulkan() {
       vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
                         graphicsPipeline);
 
+      // Calculate or retrieve the MVP matrix
+      glm::mat4 model = glm::mat4(1.0f); // Example model matrix
+      glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraDir, upVector);
+      glm::mat4 proj = glm::perspective(glm::radians(fov),
+                                         swapchain.getExtent().width / (float)swapchain.getExtent().width,
+                                        0.1f, 10.0f);
+      proj[1][1] *= -1; // Vulkan's Y-axis is inverted
+
+      glm::mat4 MVP = proj * view * model;
+
+      vkCmdPushConstants(commandBuffers[i],pipelineLayout,VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(glm::mat4), &MVP);
       // Bind vertex buffer
       VkBuffer vertexBuffers[] = {vertexBuffer.getBuffer()};
       VkDeviceSize offsets[] = {0};
       vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 
       // Bind index buffer
-      vkCmdBindIndexBuffer(commandBuffers[i],indexBuffer.getBuffer(),0,VK_INDEX_TYPE_UINT32);
+      vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer.getBuffer(), 0,
+                           VK_INDEX_TYPE_UINT32);
 
-      vkCmdDrawIndexed(commandBuffers[i],static_cast<uint32_t>(indices.size()),1,0,0,0);
+      vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()),
+                       1, 0, 0, 0);
 
       vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -223,7 +266,6 @@ void ModelLoadingApplication::initVulkan() {
     throw std::runtime_error(std::string("Failed to record command buffers: ") +
                              e.what());
   }
-
 }
 void ModelLoadingApplication::mainLoop() {
   while (!glfwWindowShouldClose(window)) {
@@ -235,15 +277,20 @@ void ModelLoadingApplication::mainLoop() {
 }
 void ModelLoadingApplication::cleanup() {
   synchronization.cleanup(vulkanContext.getDevice());
-  commandPool.cleanup(vulkanContext.getDevice());
+  vulkanContext.commandPool.cleanup(vulkanContext.getDevice());
   framebuffer.cleanup(vulkanContext.getDevice());
   renderPass.cleanup(vulkanContext.getDevice());
   swapchain.cleanup(vulkanContext.getDevice());
+
+  // Cleanup depth resources
+  vkDestroyImageView(vulkanContext.getDevice(), depthImageView, nullptr);
+  // vkDestroyImage(vulkanContext.getDevice(), depthImage, nullptr);
+  vkFreeMemory(vulkanContext.getDevice(), depthImageMemory, nullptr);
+
   vulkanContext.cleanup();
   glfwDestroyWindow(window);
   glfwTerminate();
 }
-
 
 void ModelLoadingApplication::loadModel() {
   // Get the current working directory
@@ -331,7 +378,7 @@ void ModelLoadingApplication::createIndexBuffer() {
 
 void ModelLoadingApplication::drawFrame() {
 
-   // Wait for the current frame's fence to be signaled
+  // Wait for the current frame's fence to be signaled
   vkWaitForFences(vulkanContext.getDevice(), 1,
                   &synchronization.inFlightFence(currentFrame), VK_TRUE,
                   UINT64_MAX);
@@ -402,7 +449,6 @@ void ModelLoadingApplication::drawFrame() {
   }
 
   currentFrame = (currentFrame + 1) % 2; // Assuming MAX_FRAMES_IN_FLIGHT = 2
-
 }
 void ModelLoadingApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
                                          VkDeviceSize size) {
@@ -411,7 +457,7 @@ void ModelLoadingApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
   VkCommandBufferAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandPool = commandPool.getCommandPool();
+  allocInfo.commandPool = vulkanContext.commandPool.getCommandPool();
   allocInfo.commandBufferCount = 1;
 
   VkCommandBuffer commandBuffer;
@@ -419,7 +465,7 @@ void ModelLoadingApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
                                &commandBuffer) != VK_SUCCESS) {
     throw std::runtime_error(
         "Failed to allocate command buffer for buffer copy!");
-                               }
+  }
 
   // Begin recording
   VkCommandBufferBeginInfo beginInfo{};
@@ -454,15 +500,13 @@ void ModelLoadingApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer,
   if (vkQueueSubmit(vulkanContext.getGraphicsQueue(), 1, &submitInfo,
                     VK_NULL_HANDLE) != VK_SUCCESS) {
     throw std::runtime_error("Failed to submit buffer copy command buffer!");
-                    }
+  }
 
   // Wait for the queue to finish
   vkQueueWaitIdle(vulkanContext.getGraphicsQueue());
 
   // Free the command buffer
-  vkFreeCommandBuffers(vulkanContext.getDevice(), commandPool.getCommandPool(),
-                       1, &commandBuffer);
-
+  vkFreeCommandBuffers(vulkanContext.getDevice(),
+                       vulkanContext.commandPool.getCommandPool(), 1,
+                       &commandBuffer);
 }
-void ModelLoadingApplication::recordCommandBuffers(
-    VkPipeline vk_pipeline, VkPipelineLayout pipeline_layout) {}

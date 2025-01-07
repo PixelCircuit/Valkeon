@@ -2,7 +2,9 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/thirdparty/glfw" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/thirdparty/glm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/src/ImGuizmo" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/src/assimp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/src/glTF-Sample-Assets" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/deps/src/lightweightvk" vcs="Git" />
   </component>
 </project>

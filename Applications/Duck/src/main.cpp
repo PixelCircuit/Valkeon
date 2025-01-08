@@ -1,22 +1,15 @@
-#include <lvk/LVK.h>
-
 #include <GLFW/glfw3.h>
-
-#include <shared/Utils.h>
-
+#include <assimp/cimport.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#include <assimp/version.h>
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
-
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-#include <assimp/cimport.h>
-#include <assimp/version.h>
-
+#include <lvk/LVK.h>
+#include <shared/Utils.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <vector>
-
 using glm::mat4;
 using glm::vec3;
 
@@ -65,7 +58,7 @@ int main()
 
   aiReleaseImport(scene);
 
-   lvk::Holder<lvk::BufferHandle> vertexBuffer = ctx->createBuffer(
+  lvk::Holder<lvk::BufferHandle> vertexBuffer = ctx->createBuffer(
       { .usage     = lvk::BufferUsageBits_Vertex,
         .storage   = lvk::StorageType_Device,
         .size      = sizeof(vec3) * positions.size(),
@@ -74,18 +67,17 @@ int main()
       nullptr);
 
   lvk::Holder<lvk::BufferHandle> indexBuffer = ctx->createBuffer(
-       { .usage     = lvk::BufferUsageBits_Index,
-         .storage   = lvk::StorageType_Device,
-         .size      = sizeof(uint32_t) * indices.size(),
-         .data      = indices.data(),
-         .debugName = "Buffer: index" },
-       nullptr);
+      { .usage     = lvk::BufferUsageBits_Index,
+        .storage   = lvk::StorageType_Device,
+        .size      = sizeof(uint32_t) * indices.size(),
+        .data      = indices.data(),
+        .debugName = "Buffer: index" },
+      nullptr);
 
-   const lvk::VertexInput vdesc = {
+  const lvk::VertexInput vdesc = {
     .attributes    = { { .location = 0, .format = lvk::VertexFormat::Float3, .offset = 0 } },
     .inputBindings = { { .stride = sizeof(vec3) } },
   };
-
 
   lvk::Holder<lvk::ShaderModuleHandle> vert = loadShaderModule(ctx, "Applications/Duck/src/main.vert");
   lvk::Holder<lvk::ShaderModuleHandle> frag = loadShaderModule(ctx, "Applications/Duck/src/main.frag");
@@ -112,11 +104,10 @@ int main()
       .polygonMode = lvk::PolygonMode_Line,
   });
 
-   const lvk::DepthState dState = { .compareOp = lvk::CompareOp_Less, .isDepthWriteEnabled = true };
+  const lvk::DepthState dState = { .compareOp = lvk::CompareOp_Less, .isDepthWriteEnabled = true };
 
   LVK_ASSERT(pipelineSolid.valid());
   LVK_ASSERT(pipelineWireframe.valid());
-
 
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
@@ -135,14 +126,12 @@ int main()
       .depth = { .loadOp = lvk::LoadOp_Clear, .clearDepth = 1.0f }
     };
 
-    const lvk::Framebuffer framebuffer = { 
-        .color = { { .texture = ctx->getCurrentSwapchainTexture() } },
-        .depthStencil = {.texture = depthTexture}
-    };
+    const lvk::Framebuffer framebuffer = { .color        = { { .texture = ctx->getCurrentSwapchainTexture() } },
+                                           .depthStencil = { .texture = depthTexture } };
 
     lvk::ICommandBuffer& buff = ctx->acquireCommandBuffer();
     {
-      buff.cmdBeginRendering(renderPass,framebuffer);
+      buff.cmdBeginRendering(renderPass, framebuffer);
       {
         buff.cmdPushDebugGroupLabel("Mesh", 0xff0000ff);
         {
@@ -162,7 +151,7 @@ int main()
       }
     }
 
-    ctx->submit(buff, ctx->getCurrentSwapchainTexture());  
+    ctx->submit(buff, ctx->getCurrentSwapchainTexture());
   }
 
   vert.reset();

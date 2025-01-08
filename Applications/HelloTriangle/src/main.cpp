@@ -1,7 +1,5 @@
 #include <lvk/LVK.h>
-
 #include <GLFW/glfw3.h>
-
 #include <shared/Utils.h>
 
 int main()
@@ -15,7 +13,7 @@ int main()
   {
     std::unique_ptr<lvk::IContext> ctx = lvk::createVulkanContextWithSwapchain(window, width, height, {});
 
-	 lvk::Holder<lvk::ShaderModuleHandle> vert = loadShaderModule(ctx, "Applications/HelloTriangle/src/main.vert");
+    lvk::Holder<lvk::ShaderModuleHandle> vert = loadShaderModule(ctx, "Applications/HelloTriangle/src/main.vert");
     lvk::Holder<lvk::ShaderModuleHandle> frag = loadShaderModule(ctx, "Applications/HelloTriangle/src/main.frag");
 
     lvk::Holder<lvk::RenderPipelineHandle> rpTriangle = ctx->createRenderPipeline({

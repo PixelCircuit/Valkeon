@@ -115,3 +115,4 @@ if(MSVC)
 endif()
 
 add_subdirectory(Applications/HelloTriangle)
+add_subdirectory(Applications/Duck)

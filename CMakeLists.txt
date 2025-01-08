@@ -116,3 +116,4 @@ endif()
 
 add_subdirectory(Applications/HelloTriangle)
 add_subdirectory(Applications/Duck)
+add_subdirectory(Applications/QuadTexture)
